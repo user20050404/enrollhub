@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+const BASE_URL = 'https://enrollhub-backend.onrender.com/api'
+
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api',
+  baseURL: BASE_URL,
 })
 
 // Attach the access token to every request automatically
@@ -22,7 +24,7 @@ api.interceptors.response.use(
       original._retry = true
       try {
         const refresh = localStorage.getItem('refresh_token')
-        const res = await axios.post('http://127.0.0.1:8000/api/auth/token/refresh/', { refresh })
+        const res = await axios.post(`${BASE_URL}/auth/token/refresh/`, { refresh })
         localStorage.setItem('access_token', res.data.access)
         original.headers.Authorization = `Bearer ${res.data.access}`
         return api(original)
