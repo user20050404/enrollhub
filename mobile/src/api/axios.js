@@ -1,8 +1,10 @@
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
+const BASE_URL = 'https://enrollhub-backend.onrender.com/api'
+
 const api = axios.create({
-  baseURL: 'http://192.168.100.93:8000/api',  // ← only this line changed
+  baseURL: BASE_URL,
 })
 
 api.interceptors.request.use(async (config) => {
@@ -19,7 +21,7 @@ api.interceptors.response.use(
       original._retry = true
       try {
         const refresh = await AsyncStorage.getItem('refresh_token')
-        const res = await axios.post('http://192.168.100.93:8000/api/auth/token/refresh/', { refresh })  // ← and this line
+        const res = await axios.post(`${BASE_URL}/auth/token/refresh/`, { refresh })
         await AsyncStorage.setItem('access_token', res.data.access)
         original.headers.Authorization = `Bearer ${res.data.access}`
         return api(original)

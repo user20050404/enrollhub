@@ -117,6 +117,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:8081',
     'http://192.168.100.93:8081',
+    'https://enrollhub-eight.vercel.app',   # ← add this
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
