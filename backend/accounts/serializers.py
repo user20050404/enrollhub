@@ -24,11 +24,26 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    profile_image = serializers.SerializerMethodField()
+
     class Meta:
         model  = CustomUser
         fields = ('id', 'email', 'first_name', 'last_name', 'role',
                   'profile_image', 'is_verified', 'is_active', 'date_joined')
         read_only_fields = ('id', 'is_verified', 'date_joined')
+
+    def get_profile_image(self, obj):
+        if not obj.profile_image:
+            return None
+        # If it's already a full URL (Cloudinary), return as-is
+        url = str(obj.profile_image)
+        if url.startswith('http'):
+            return url
+        # Otherwise build absolute URL using request context
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.profile_image.url)
+        return url
 
 
 class ChangePasswordSerializer(serializers.Serializer):
