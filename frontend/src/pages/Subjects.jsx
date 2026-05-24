@@ -7,6 +7,7 @@ const EMPTY = {
   code:         '',
   name:         '',
   units:        3,
+  instructor:   '',
   schedule:     '',
   room:         '',
   description:  '',
@@ -52,6 +53,7 @@ export default function Subjects() {
       code:         s.code,
       name:         s.name,
       units:        s.units,
+      instructor:   s.instructor   || '',
       schedule:     s.schedule     || '',
       room:         s.room         || '',
       description:  s.description  || '',
@@ -129,6 +131,14 @@ export default function Subjects() {
                 <p className="text-gray-500 text-xs mb-2">
                   {s.department} · {s.subject_type.replace('_', ' ')}
                 </p>
+
+                {/* Instructor */}
+                {s.instructor && (
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-gray-600 text-xs">👤</span>
+                    <span className="text-gray-300 text-xs">{s.instructor}</span>
+                  </div>
+                )}
 
                 {/* Schedule */}
                 {s.schedule && (
@@ -261,6 +271,17 @@ export default function Subjects() {
                   <option value="lab">Laboratory</option>
                   <option value="lec_lab">Lecture + Lab</option>
                 </select>
+              </div>
+
+              {/* Instructor */}
+              <div>
+                <label className="text-gray-400 text-xs block mb-1">Instructor</label>
+                <input
+                  value={form.instructor}
+                  onChange={e => setForm({...form, instructor: e.target.value})}
+                  placeholder="e.g. Prof. Juan Dela Cruz"
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                />
               </div>
 
               {/* Schedule + Room */}

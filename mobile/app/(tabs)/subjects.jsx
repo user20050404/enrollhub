@@ -7,8 +7,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import api from '../../src/api/axios'
 
-const EMPTY = { code:'', name:'', units:'3', schedule:'', room:'', description:'', department:'', subject_type:'lecture' }
-const TYPES = ['lecture','lab','lec_lab']
+const EMPTY = { code:'', name:'', units:'3', instructor:'', schedule:'', room:'', description:'', department:'', subject_type:'lecture' }
+const TYPES  = ['lecture','lab','lec_lab']
 const COLORS = ['#6366F1','#14B8A6','#F59E0B','#F43F5E','#8B5CF6']
 
 export default function Subjects() {
@@ -36,9 +36,10 @@ export default function Subjects() {
       code:         sub.code,
       name:         sub.name,
       units:        String(sub.units),
-      schedule:     sub.schedule || '',
-      room:         sub.room     || '',
-      description:  sub.description || '',
+      instructor:   sub.instructor   || '',
+      schedule:     sub.schedule     || '',
+      room:         sub.room         || '',
+      description:  sub.description  || '',
       department:   sub.department,
       subject_type: sub.subject_type,
     })
@@ -104,8 +105,9 @@ export default function Subjects() {
               </View>
               <Text style={s.name}>{sub.name}</Text>
               <Text style={s.dept}>{sub.department} · {sub.subject_type.replace('_',' ')}</Text>
-              {sub.schedule ? <Text style={s.detail}>🕐 {sub.schedule}</Text> : null}
-              {sub.room     ? <Text style={s.detail}>📍 {sub.room}</Text>     : null}
+              {sub.instructor ? <Text style={s.detail}>👤 {sub.instructor}</Text> : null}
+              {sub.schedule   ? <Text style={s.detail}>🕐 {sub.schedule}</Text>   : null}
+              {sub.room       ? <Text style={s.detail}>📍 {sub.room}</Text>       : null}
               <View style={s.cardActions}>
                 <TouchableOpacity onPress={() => openEdit(sub)} style={s.editBtn}>
                   <Text style={s.editBtnText}>Edit</Text>
@@ -143,12 +145,15 @@ export default function Subjects() {
                       keyboardType="numeric" placeholder="3" placeholderTextColor="#4B5563"/>
                   </View>
                 </View>
+
                 <Text style={ms.label}>Subject Name *</Text>
                 <TextInput style={ms.input} value={form.name} onChangeText={v => set('name',v)}
                   placeholder="e.g. Introduction to CS" placeholderTextColor="#4B5563"/>
+
                 <Text style={ms.label}>Department *</Text>
                 <TextInput style={ms.input} value={form.department} onChangeText={v => set('department',v)}
                   placeholder="e.g. Computer Science" placeholderTextColor="#4B5563"/>
+
                 <Text style={ms.label}>Type</Text>
                 <View style={ms.typeRow}>
                   {TYPES.map(t => (
@@ -160,6 +165,11 @@ export default function Subjects() {
                     </TouchableOpacity>
                   ))}
                 </View>
+
+                <Text style={ms.label}>Instructor</Text>
+                <TextInput style={ms.input} value={form.instructor} onChangeText={v => set('instructor',v)}
+                  placeholder="e.g. Prof. Juan Dela Cruz" placeholderTextColor="#4B5563"/>
+
                 <View style={ms.row}>
                   <View style={{ flex:1 }}>
                     <Text style={ms.label}>Schedule</Text>
@@ -173,10 +183,12 @@ export default function Subjects() {
                       placeholder="Lab 204" placeholderTextColor="#4B5563"/>
                   </View>
                 </View>
+
                 <Text style={ms.label}>Description</Text>
                 <TextInput style={[ms.input, { height:70, textAlignVertical:'top' }]}
                   value={form.description} onChangeText={v => set('description',v)}
                   placeholder="Optional description..." placeholderTextColor="#4B5563" multiline/>
+
                 <TouchableOpacity style={[ms.saveBtn, saving && ms.saveBtnDisabled]} onPress={handleSave} disabled={saving}>
                   <Text style={ms.saveBtnText}>{saving ? 'Saving...' : editItem ? 'Save Changes' : 'Add Subject'}</Text>
                 </TouchableOpacity>

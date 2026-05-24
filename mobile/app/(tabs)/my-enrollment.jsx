@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator,
-  RefreshControl, TouchableOpacity, Modal, FlatList, Alert
+  RefreshControl, TouchableOpacity, Modal, Alert
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import api from '../../src/api/axios'
@@ -26,12 +26,12 @@ export default function MyEnrollment() {
 
   const load = async () => {
     try {
-      const [me, sec] = await Promise.all([
+      const [meRes, secRes] = await Promise.allSettled([
         api.get('/enrollments/me/'),
         api.get('/sections/'),
       ])
-      setData(me.data)
-      setSections(sec.data.results || sec.data)
+      if (meRes.status === 'fulfilled')  setData(meRes.value.data)
+      if (secRes.status === 'fulfilled') setSections(secRes.value.data.results || secRes.value.data)
     } finally { setLoading(false); setRefreshing(false) }
   }
   useEffect(() => { load() }, [])
@@ -73,7 +73,6 @@ export default function MyEnrollment() {
 
   return (
     <SafeAreaView style={s.safe}>
-      {/* ✅ Main content scrolls fully */}
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load() }} tintColor="#F59E0B"/>}
         contentContainerStyle={{ paddingBottom: 32 }}
@@ -137,7 +136,6 @@ export default function MyEnrollment() {
                       {group.subjects.reduce((sum,e) => sum+(e.subject_detail?.units||0),0)} units
                     </Text>
                   </View>
-                  {/* ✅ Each subject row renders inline — parent ScrollView handles scrolling */}
                   {group.subjects.map(e => {
                     const ss = STATUS_STYLE[e.status] || STATUS_STYLE.pending
                     return (
@@ -174,7 +172,7 @@ export default function MyEnrollment() {
                 <Text style={ms.closeBtn}>✕</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={ms.label}>Select Section</Text>
               <TouchableOpacity style={ms.picker} onPress={() => setShowPicker(true)}>
                 <Text style={selSection ? ms.pickerValue : ms.pickerPlaceholder}>
@@ -215,10 +213,10 @@ export default function MyEnrollment() {
         </View>
       </Modal>
 
-      {/* ✅ Section Picker — FlatList needs flex:1 and bounded container */}
+      {/* ✅ Section Picker — ScrollView+map instead of FlatList to fix iOS modal rendering bug */}
       <Modal visible={showPicker} animationType="slide" transparent onRequestClose={() => setShowPicker(false)}>
         <View style={ms.overlay}>
-          <View style={[ms.sheet, { flex:1, maxHeight:'80%' }]}>
+          <View style={ms.pickerSheet}>
             <View style={ms.sheetHeader}>
               <Text style={ms.sheetTitle}>Choose Section</Text>
               <TouchableOpacity onPress={() => setShowPicker(false)}>
@@ -228,19 +226,16 @@ export default function MyEnrollment() {
             {availableSections.length === 0 ? (
               <Text style={ms.noSectMsg}>No available sections right now</Text>
             ) : (
-              <FlatList
-                data={availableSections}
-                keyExtractor={i => String(i.id)}
-                style={{ flex:1 }}
-                renderItem={({ item:sec }) => (
-                  <TouchableOpacity style={ms.listItem} onPress={() => handleSelectSection(sec)}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                {availableSections.map(sec => (
+                  <TouchableOpacity key={sec.id} style={ms.listItem} onPress={() => handleSelectSection(sec)}>
                     <Text style={ms.listItemMain}>{sec.code}</Text>
                     <Text style={ms.listItemSub}>
-                      {sec.available_slots} slots · {sec.subjects_detail?.map(s=>s.code).join(', ')}
+                      {sec.available_slots} slots · {sec.subjects_detail?.map(s => s.code).join(', ')}
                     </Text>
                   </TouchableOpacity>
-                )}
-              />
+                ))}
+              </ScrollView>
             )}
           </View>
         </View>
@@ -283,29 +278,30 @@ const s = StyleSheet.create({
 })
 
 const ms = StyleSheet.create({
-  overlay:       { flex:1, backgroundColor:'rgba(0,0,0,0.7)', justifyContent:'flex-end' },
-  sheet:         { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, maxHeight:'90%' },
-  sheetHeader:   { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:20 },
-  sheetTitle:    { color:'#FFF', fontSize:18, fontWeight:'bold' },
-  closeBtn:      { color:'#6B7280', fontSize:20 },
-  label:         { color:'#9CA3AF', fontSize:12, marginBottom:6 },
-  picker:        { backgroundColor:'#1F2937', borderWidth:1, borderColor:'#374151', borderRadius:10, paddingHorizontal:14, paddingVertical:13, marginBottom:14, flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
-  pickerValue:   { color:'#FFF', fontSize:14, flex:1 },
+  overlay:           { flex:1, backgroundColor:'rgba(0,0,0,0.7)', justifyContent:'flex-end' },
+  sheet:             { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, maxHeight:'90%' },
+  pickerSheet:       { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, maxHeight:'80%', minHeight:200 },
+  sheetHeader:       { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:20 },
+  sheetTitle:        { color:'#FFF', fontSize:18, fontWeight:'bold' },
+  closeBtn:          { color:'#6B7280', fontSize:20 },
+  label:             { color:'#9CA3AF', fontSize:12, marginBottom:6 },
+  picker:            { backgroundColor:'#1F2937', borderWidth:1, borderColor:'#374151', borderRadius:10, paddingHorizontal:14, paddingVertical:13, marginBottom:14, flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
+  pickerValue:       { color:'#FFF', fontSize:14, flex:1 },
   pickerPlaceholder: { color:'#4B5563', fontSize:14, flex:1 },
-  pickerArrow:   { color:'#6B7280', fontSize:18 },
-  preview:       { backgroundColor:'#1F2937', borderRadius:12, padding:12, marginBottom:14 },
-  previewHeader: { flexDirection:'row', justifyContent:'space-between', marginBottom:8 },
-  previewTitle:  { color:'#FFF', fontSize:12, fontWeight:'600' },
-  previewUnits:  { color:'#14B8A6', fontSize:12, fontWeight:'700' },
-  previewRow:    { flexDirection:'row', alignItems:'flex-start', paddingVertical:6, borderBottomWidth:1, borderBottomColor:'#374151', gap:8 },
-  previewCode:   { color:'#F59E0B', fontSize:11, fontWeight:'600' },
-  previewMeta:   { color:'#6B7280', fontSize:10, marginTop:2 },
-  previewU:      { color:'#14B8A6', fontSize:11, fontWeight:'700', marginTop:2 },
-  listItem:      { padding:14, borderBottomWidth:1, borderBottomColor:'#1F2937' },
-  listItemMain:  { color:'#FFF', fontSize:14, fontWeight:'500', marginBottom:2 },
-  listItemSub:   { color:'#6B7280', fontSize:11 },
-  noSectMsg:     { color:'#4B5563', padding:16, textAlign:'center', fontSize:13 },
-  saveBtn:       { backgroundColor:'#F59E0B', borderRadius:12, paddingVertical:14, alignItems:'center', marginBottom:16 },
-  saveBtnDisabled: { opacity:0.5 },
-  saveBtnText:   { color:'#000', fontWeight:'700', fontSize:15 },
+  pickerArrow:       { color:'#6B7280', fontSize:18 },
+  preview:           { backgroundColor:'#1F2937', borderRadius:12, padding:12, marginBottom:14 },
+  previewHeader:     { flexDirection:'row', justifyContent:'space-between', marginBottom:8 },
+  previewTitle:      { color:'#FFF', fontSize:12, fontWeight:'600' },
+  previewUnits:      { color:'#14B8A6', fontSize:12, fontWeight:'700' },
+  previewRow:        { flexDirection:'row', alignItems:'flex-start', paddingVertical:6, borderBottomWidth:1, borderBottomColor:'#374151', gap:8 },
+  previewCode:       { color:'#F59E0B', fontSize:11, fontWeight:'600' },
+  previewMeta:       { color:'#6B7280', fontSize:10, marginTop:2 },
+  previewU:          { color:'#14B8A6', fontSize:11, fontWeight:'700', marginTop:2 },
+  listItem:          { padding:14, borderBottomWidth:1, borderBottomColor:'#1F2937' },
+  listItemMain:      { color:'#FFF', fontSize:14, fontWeight:'500', marginBottom:2 },
+  listItemSub:       { color:'#6B7280', fontSize:11 },
+  noSectMsg:         { color:'#4B5563', padding:16, textAlign:'center', fontSize:13 },
+  saveBtn:           { backgroundColor:'#F59E0B', borderRadius:12, paddingVertical:14, alignItems:'center', marginBottom:16 },
+  saveBtnDisabled:   { opacity:0.5 },
+  saveBtnText:       { color:'#000', fontWeight:'700', fontSize:15 },
 })

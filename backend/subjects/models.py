@@ -12,6 +12,7 @@ class Subject(models.Model):
     code         = models.CharField(max_length=20, unique=True)
     name         = models.CharField(max_length=200)
     units        = models.IntegerField()
+    instructor   = models.CharField(max_length=100, blank=True, default='')
     schedule     = models.CharField(max_length=100, blank=True, default='')
     room         = models.CharField(max_length=50,  blank=True, default='')
     description  = models.TextField(blank=True)
