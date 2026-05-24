@@ -126,10 +126,6 @@ export default function Profile() {
 
   const initials     = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
   const profileImage = user?.profile_image || null
-  // Add timestamp to force reload and bypass cache
-  const imageSource  = profileImage
-    ? { uri: `${profileImage}?t=${Date.now()}` }
-    : null
 
   return (
     <SafeAreaView style={s.safe}>
@@ -137,11 +133,11 @@ export default function Profile() {
 
         {/* Avatar */}
         <View style={s.avatarWrap}>
-          {imageSource ? (
+          {profileImage ? (
             <Image
-              source={imageSource}
+              source={{ uri: profileImage }}
               style={s.avatarImg}
-              onError={() => console.log('Image failed to load')}
+              onError={(e) => console.log('Image failed to load')}
             />
           ) : (
             <View style={s.avatar}>
@@ -216,8 +212,8 @@ export default function Profile() {
               <View style={ms.avatarRow}>
                 {imageUri ? (
                   <Image source={{ uri: imageUri }} style={ms.previewImg}/>
-                ) : imageSource ? (
-                  <Image source={imageSource} style={ms.previewImg}/>
+                ) : profileImage ? (
+                  <Image source={{ uri: profileImage }} style={ms.previewImg}/>
                 ) : (
                   <View style={ms.previewInitials}>
                     <Text style={ms.previewInitialsText}>{initials}</Text>

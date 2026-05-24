@@ -96,16 +96,18 @@ export default function Profile() {
               <div className="relative">
                 {profileImage ? (
                   <img
-                    src={`${profileImage}?t=${Date.now()}`}
+                    src={profileImage}
                     alt="Profile"
                     className="w-20 h-20 rounded-xl object-cover border-2 border-gray-700"
-                    onError={(e) => { e.target.style.display = 'none' }}
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'flex'
+                    }}
                   />
-                ) : (
-                  <div className="w-20 h-20 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold border-2 border-gray-700">
+                ) : null}
+                  <div className={`w-20 h-20 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold border-2 border-gray-700 ${profileImage ? 'hidden' : ''}`}>
                     {initials}
                   </div>
-                )}
                 <button type="button" onClick={() => fileRef.current.click()}
                   className="absolute -bottom-2 -right-2 w-7 h-7 bg-amber-500 hover:bg-amber-400 rounded-full flex items-center justify-center text-black text-xs font-bold transition-colors">
                   ✎
