@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
 
 export default function Profile() {
-  const { user, setUser } = useAuth()   // ✅ setUser instead of login
+  const { user, setUser } = useAuth()
   const navigate          = useNavigate()
   const fileRef           = useRef()
 
@@ -40,14 +40,16 @@ export default function Profile() {
       formData.append('last_name',  form.last_name)
       if (imageFile) formData.append('profile_image', imageFile)
 
-      const res = await api.patch('/auth/me/update/', formData, {
+      await api.patch('/auth/me/update/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      setUser(res.data)       // ✅ updates AuthContext so UI reflects instantly
+      // Re-fetch fresh user data to get full Cloudinary URL
+      const fresh = await api.get('/auth/me/')
+      setUser(fresh.data)
       setSuccess('Profile updated successfully!')
       setImageFile(null)
-      setPreview(null)        // ✅ clear preview so Cloudinary URL shows
+      setPreview(null)
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to update profile.')
     } finally { setSaving(false) }
@@ -93,8 +95,12 @@ export default function Profile() {
             <div className="flex items-center gap-5 mb-6">
               <div className="relative">
                 {profileImage ? (
-                  <img src={profileImage} alt="Profile"
-                    className="w-20 h-20 rounded-xl object-cover border-2 border-gray-700"/>
+                  <img
+                    src={`${profileImage}?t=${Date.now()}`}
+                    alt="Profile"
+                    className="w-20 h-20 rounded-xl object-cover border-2 border-gray-700"
+                    onError={(e) => { e.target.style.display = 'none' }}
+                  />
                 ) : (
                   <div className="w-20 h-20 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold border-2 border-gray-700">
                     {initials}
@@ -166,18 +172,21 @@ export default function Profile() {
           <form onSubmit={handlePasswordSave} className="space-y-4">
             <div>
               <label className="text-gray-400 text-xs block mb-1.5">Current password</label>
-              <input type="password" value={pwForm.old_password} onChange={e => setPwForm({...pwForm, old_password:e.target.value})} required
+              <input type="password" value={pwForm.old_password}
+                onChange={e => setPwForm({...pwForm, old_password:e.target.value})} required
                 className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500"/>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-gray-400 text-xs block mb-1.5">New password</label>
-                <input type="password" value={pwForm.new_password} onChange={e => setPwForm({...pwForm, new_password:e.target.value})} required
+                <input type="password" value={pwForm.new_password}
+                  onChange={e => setPwForm({...pwForm, new_password:e.target.value})} required
                   className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500"/>
               </div>
               <div>
                 <label className="text-gray-400 text-xs block mb-1.5">Confirm new password</label>
-                <input type="password" value={pwForm.confirm} onChange={e => setPwForm({...pwForm, confirm:e.target.value})} required
+                <input type="password" value={pwForm.confirm}
+                  onChange={e => setPwForm({...pwForm, confirm:e.target.value})} required
                   className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500"/>
               </div>
             </div>
