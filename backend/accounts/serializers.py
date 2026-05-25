@@ -36,7 +36,7 @@ class UserSerializer(serializers.ModelSerializer):
         if not obj.profile_image:
             return None
         try:
-            return obj.profile_image.url 
+            return obj.profile_image.url   # Cloudinary returns full URL directly
         except Exception:
             return None
 
