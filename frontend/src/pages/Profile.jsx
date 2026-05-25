@@ -1,27 +1,37 @@
 import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import Topbar from '../components/layout/Topbar'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axios'
 
+// Converts any image value the backend returns into a proper Cloudinary URL
+const getImageUrl = (image) => {
+  if (!image) return null
+  const url = String(image).trim()
+  // Already a full URL — return as is
+  if (url.startsWith('http')) return url
+  // Extract just the filename — handles both /media/profiles/x.jpg and media/profiles/x.jpg
+  const filename = url.split('/').pop()
+  if (!filename) return null
+  return `https://res.cloudinary.com/dhcszgtm5/image/upload/profiles/${filename}`
+}
+
 export default function Profile() {
   const { user, setUser } = useAuth()
-  const navigate          = useNavigate()
   const fileRef           = useRef()
 
-  const [form, setForm]           = useState({
+  const [form, setForm]         = useState({
     first_name: user?.first_name || '',
     last_name:  user?.last_name  || '',
   })
-  const [pwForm, setPwForm]       = useState({ old_password:'', new_password:'', confirm:'' })
-  const [preview, setPreview]     = useState(null)
+  const [pwForm, setPwForm]     = useState({ old_password:'', new_password:'', confirm:'' })
+  const [preview, setPreview]   = useState(null)
   const [imageFile, setImageFile] = useState(null)
-  const [saving, setSaving]       = useState(false)
-  const [savingPw, setSavingPw]   = useState(false)
-  const [success, setSuccess]     = useState('')
-  const [error, setError]         = useState('')
-  const [pwError, setPwError]     = useState('')
+  const [saving, setSaving]     = useState(false)
+  const [savingPw, setSavingPw] = useState(false)
+  const [success, setSuccess]   = useState('')
+  const [error, setError]       = useState('')
+  const [pwError, setPwError]   = useState('')
   const [pwSuccess, setPwSuccess] = useState('')
 
   const handleImageChange = (e) => {
@@ -44,7 +54,6 @@ export default function Profile() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      // Re-fetch fresh user data to get full Cloudinary URL
       const fresh = await api.get('/auth/me/')
       setUser(fresh.data)
       setSuccess('Profile updated successfully!')
@@ -74,15 +83,6 @@ export default function Profile() {
     } finally { setSavingPw(false) }
   }
 
-// Helper — converts any image value to a displayable URL
-const getImageUrl = (image) => {
-  if (!image) return null
-  const url = String(image)
-  if (url.startsWith('http')) return url
-  if (url.startsWith('/')) return `https://enrollhub-backend.onrender.com${url}`
-  return `https://res.cloudinary.com/dhcszgtm5/image/upload/${url}`
-}
-  console.log('profile_image value:', user?.profile_image)
   const profileImage = preview || getImageUrl(user?.profile_image)
   const initials     = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
 
@@ -114,19 +114,28 @@ const getImageUrl = (image) => {
                     }}
                   />
                 ) : null}
-                  <div className={`w-20 h-20 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold border-2 border-gray-700 ${profileImage ? 'hidden' : ''}`}>
-                    {initials}
-                  </div>
-                <button type="button" onClick={() => fileRef.current.click()}
-                  className="absolute -bottom-2 -right-2 w-7 h-7 bg-amber-500 hover:bg-amber-400 rounded-full flex items-center justify-center text-black text-xs font-bold transition-colors">
+                <div
+                  className="w-20 h-20 rounded-xl bg-indigo-600 items-center justify-center text-white text-2xl font-bold border-2 border-gray-700"
+                  style={{ display: profileImage ? 'none' : 'flex' }}
+                >
+                  {initials}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current.click()}
+                  className="absolute -bottom-2 -right-2 w-7 h-7 bg-amber-500 hover:bg-amber-400 rounded-full flex items-center justify-center text-black text-xs font-bold transition-colors"
+                >
                   ✎
                 </button>
               </div>
               <div>
                 <div className="text-white font-semibold">{user?.first_name} {user?.last_name}</div>
                 <div className="text-gray-500 text-xs capitalize mt-0.5">{user?.role}</div>
-                <button type="button" onClick={() => fileRef.current.click()}
-                  className="text-amber-500 hover:text-amber-400 text-xs mt-1.5 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current.click()}
+                  className="text-amber-500 hover:text-amber-400 text-xs mt-1.5 transition-colors"
+                >
                   Change photo
                 </button>
               </div>

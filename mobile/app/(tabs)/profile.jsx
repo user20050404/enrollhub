@@ -10,6 +10,16 @@ import { useRouter } from 'expo-router'
 import { useAuth } from '../../src/context/AuthContext'
 import api from '../../src/api/axios'
 
+// Converts any image value the backend returns into a proper Cloudinary URL
+const getImageUrl = (image) => {
+  if (!image) return null
+  const url = String(image).trim()
+  if (url.startsWith('http')) return url
+  const filename = url.split('/').pop()
+  if (!filename) return null
+  return `https://res.cloudinary.com/dhcszgtm5/image/upload/profiles/${filename}`
+}
+
 export default function Profile() {
   const { user, logout, setUser } = useAuth()
   const router = useRouter()
@@ -17,10 +27,10 @@ export default function Profile() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showPwModal,   setShowPwModal]   = useState(false)
 
-  const [firstName,      setFirstName]      = useState(user?.first_name || '')
-  const [lastName,       setLastName]       = useState(user?.last_name  || '')
-  const [imageUri,       setImageUri]       = useState(null)
-  const [savingProfile,  setSavingProfile]  = useState(false)
+  const [firstName,     setFirstName]     = useState(user?.first_name || '')
+  const [lastName,      setLastName]      = useState(user?.last_name  || '')
+  const [imageUri,      setImageUri]      = useState(null)
+  const [savingProfile, setSavingProfile] = useState(false)
 
   const [oldPw,     setOldPw]     = useState('')
   const [newPw,     setNewPw]     = useState('')
@@ -43,14 +53,6 @@ export default function Profile() {
     setImageUri(null)
     setShowEditModal(true)
   }
-
-  const getImageUrl = (image) => {
-  if (!image) return null
-  const url = String(image)
-  if (url.startsWith('http')) return url
-  if (url.startsWith('/')) return `https://enrollhub-backend.onrender.com${url}`
-  return `https://res.cloudinary.com/dhcszgtm5/image/upload/${url}`
-}
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -91,7 +93,6 @@ export default function Profile() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      // Re-fetch fresh user data to get full Cloudinary URL
       const fresh = await api.get('/auth/me/')
       setUser(fresh.data)
       setShowEditModal(false)
@@ -99,7 +100,6 @@ export default function Profile() {
       Alert.alert('Success', 'Profile updated!')
 
     } catch (err) {
-      console.log('Profile update error:', JSON.stringify(err.response?.data || err.message))
       Alert.alert('Error',
         err.response?.data?.detail ||
         err.response?.data?.error  ||
@@ -145,7 +145,7 @@ export default function Profile() {
             <Image
               source={{ uri: profileImage }}
               style={s.avatarImg}
-              onError={(e) => console.log('Image failed to load')}
+              onError={() => console.log('Image failed to load:', profileImage)}
             />
           ) : (
             <View style={s.avatar}>
@@ -318,20 +318,20 @@ const s = StyleSheet.create({
 })
 
 const ms = StyleSheet.create({
-  overlay:              { flex:1, backgroundColor:'rgba(0,0,0,0.7)', justifyContent:'flex-end' },
-  sheet:                { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24 },
-  sheetHeader:          { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:20 },
-  sheetTitle:           { color:'#FFF', fontSize:18, fontWeight:'bold' },
-  closeBtn:             { color:'#6B7280', fontSize:20 },
-  avatarRow:            { alignItems:'center', marginBottom:20 },
-  previewImg:           { width:72, height:72, borderRadius:18, marginBottom:10, backgroundColor:'#4F46E5' },
-  previewInitials:      { width:72, height:72, borderRadius:18, backgroundColor:'#4F46E5', alignItems:'center', justifyContent:'center', marginBottom:10 },
-  previewInitialsText:  { color:'#FFF', fontSize:26, fontWeight:'bold' },
-  changePhotoBtn:       { backgroundColor:'rgba(245,158,11,0.1)', borderWidth:1, borderColor:'rgba(245,158,11,0.3)', borderRadius:10, paddingHorizontal:16, paddingVertical:8 },
-  changePhotoText:      { color:'#F59E0B', fontSize:13, fontWeight:'600' },
-  label:                { color:'#9CA3AF', fontSize:12, marginBottom:6 },
-  input:                { backgroundColor:'#1F2937', borderWidth:1, borderColor:'#374151', borderRadius:10, paddingHorizontal:14, paddingVertical:12, color:'#FFF', fontSize:14, marginBottom:14 },
-  saveBtn:              { backgroundColor:'#F59E0B', borderRadius:12, paddingVertical:14, alignItems:'center', marginTop:4, marginBottom:8 },
-  saveBtnDisabled:      { opacity:0.5 },
-  saveBtnText:          { color:'#000', fontWeight:'700', fontSize:15 },
+  overlay:             { flex:1, backgroundColor:'rgba(0,0,0,0.7)', justifyContent:'flex-end' },
+  sheet:               { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24 },
+  sheetHeader:         { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:20 },
+  sheetTitle:          { color:'#FFF', fontSize:18, fontWeight:'bold' },
+  closeBtn:            { color:'#6B7280', fontSize:20 },
+  avatarRow:           { alignItems:'center', marginBottom:20 },
+  previewImg:          { width:72, height:72, borderRadius:18, marginBottom:10, backgroundColor:'#4F46E5' },
+  previewInitials:     { width:72, height:72, borderRadius:18, backgroundColor:'#4F46E5', alignItems:'center', justifyContent:'center', marginBottom:10 },
+  previewInitialsText: { color:'#FFF', fontSize:26, fontWeight:'bold' },
+  changePhotoBtn:      { backgroundColor:'rgba(245,158,11,0.1)', borderWidth:1, borderColor:'rgba(245,158,11,0.3)', borderRadius:10, paddingHorizontal:16, paddingVertical:8 },
+  changePhotoText:     { color:'#F59E0B', fontSize:13, fontWeight:'600' },
+  label:               { color:'#9CA3AF', fontSize:12, marginBottom:6 },
+  input:               { backgroundColor:'#1F2937', borderWidth:1, borderColor:'#374151', borderRadius:10, paddingHorizontal:14, paddingVertical:12, color:'#FFF', fontSize:14, marginBottom:14 },
+  saveBtn:             { backgroundColor:'#F59E0B', borderRadius:12, paddingVertical:14, alignItems:'center', marginTop:4, marginBottom:8 },
+  saveBtnDisabled:     { opacity:0.5 },
+  saveBtnText:         { color:'#000', fontWeight:'700', fontSize:15 },
 })
