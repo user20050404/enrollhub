@@ -213,7 +213,7 @@ export default function MyEnrollment() {
         </View>
       </Modal>
 
-      {/* ✅ Section Picker — ScrollView+map instead of FlatList to fix iOS modal rendering bug */}
+      {/* Section Picker Modal */}
       <Modal visible={showPicker} animationType="slide" transparent onRequestClose={() => setShowPicker(false)}>
         <View style={ms.overlay}>
           <View style={ms.pickerSheet}>
@@ -223,6 +223,12 @@ export default function MyEnrollment() {
                 <Text style={ms.closeBtn}>✕</Text>
               </TouchableOpacity>
             </View>
+
+            {/* DEBUG LINE — remove after fixing */}
+            <Text style={{ color:'red', fontSize:11, marginBottom:8 }}>
+              sections: {sections.length} | available: {availableSections.length} | enrolledIDs: {JSON.stringify(enrolledSectionIds)}
+            </Text>
+
             {availableSections.length === 0 ? (
               <Text style={ms.noSectMsg}>No available sections right now</Text>
             ) : (

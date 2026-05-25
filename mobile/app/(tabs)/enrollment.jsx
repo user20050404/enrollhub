@@ -162,7 +162,6 @@ export default function Enrollment() {
                 <Text style={ms.closeBtn}>✕</Text>
               </TouchableOpacity>
             </View>
-            {/* ✅ keyboardShouldPersistTaps so picker rows are tappable */}
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={ms.label}>Student</Text>
               <TouchableOpacity style={ms.picker} onPress={() => setShowStudentPicker(true)}>
@@ -210,7 +209,7 @@ export default function Enrollment() {
         </View>
       </Modal>
 
-      {/* ✅ Student Picker — ScrollView+map instead of FlatList to fix iOS modal rendering bug */}
+      {/* Student Picker Modal */}
       <Modal visible={showStudentPicker} animationType="slide" transparent onRequestClose={() => setShowStudentPicker(false)}>
         <View style={ms.overlay}>
           <View style={ms.pickerSheet}>
@@ -220,6 +219,12 @@ export default function Enrollment() {
                 <Text style={ms.closeBtn}>✕</Text>
               </TouchableOpacity>
             </View>
+
+            {/* DEBUG LINE — remove after fixing */}
+            <Text style={{ color:'red', fontSize:11, marginBottom:8 }}>
+              students: {students.length}
+            </Text>
+
             {students.length === 0 ? (
               <Text style={ms.noSubMsg}>No students found</Text>
             ) : (
@@ -236,7 +241,7 @@ export default function Enrollment() {
         </View>
       </Modal>
 
-      {/* ✅ Section Picker — ScrollView+map instead of FlatList to fix iOS modal rendering bug */}
+      {/* Section Picker Modal */}
       <Modal visible={showSectionPicker} animationType="slide" transparent onRequestClose={() => setShowSectionPicker(false)}>
         <View style={ms.overlay}>
           <View style={ms.pickerSheet}>
@@ -246,6 +251,12 @@ export default function Enrollment() {
                 <Text style={ms.closeBtn}>✕</Text>
               </TouchableOpacity>
             </View>
+
+            {/* DEBUG LINE — remove after fixing */}
+            <Text style={{ color:'red', fontSize:11, marginBottom:8 }}>
+              sections: {sections.length} | available: {availableSections.length}
+            </Text>
+
             {availableSections.length === 0 ? (
               <Text style={ms.noSubMsg}>No open sections available</Text>
             ) : (
