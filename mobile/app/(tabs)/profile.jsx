@@ -10,16 +10,6 @@ import { useRouter } from 'expo-router'
 import { useAuth } from '../../src/context/AuthContext'
 import api from '../../src/api/axios'
 
-// Converts any image value the backend returns into a proper Cloudinary URL
-const getImageUrl = (image) => {
-  if (!image) return null
-  const url = String(image).trim()
-  if (url.startsWith('http')) return url
-  const filename = url.split('/').pop()
-  if (!filename) return null
-  return `https://res.cloudinary.com/dhcszgtm5/image/upload/profiles/${filename}`
-}
-
 export default function Profile() {
   const { user, logout, setUser } = useAuth()
   const router = useRouter()
@@ -31,6 +21,7 @@ export default function Profile() {
   const [lastName,      setLastName]      = useState(user?.last_name  || '')
   const [imageUri,      setImageUri]      = useState(null)
   const [savingProfile, setSavingProfile] = useState(false)
+  const [imgError,      setImgError]      = useState(false)
 
   const [oldPw,     setOldPw]     = useState('')
   const [newPw,     setNewPw]     = useState('')
@@ -68,6 +59,7 @@ export default function Profile() {
     })
     if (!result.canceled) {
       setImageUri(result.assets[0].uri)
+      setImgError(false)
     }
   }
 
@@ -93,10 +85,12 @@ export default function Profile() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
+      // Re-fetch fresh user data to get full Cloudinary URL from backend
       const fresh = await api.get('/auth/me/')
       setUser(fresh.data)
       setShowEditModal(false)
       setImageUri(null)
+      setImgError(false)
       Alert.alert('Success', 'Profile updated!')
 
     } catch (err) {
@@ -132,8 +126,12 @@ export default function Profile() {
     } finally { setSavingPw(false) }
   }
 
-  const initials     = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
-  const profileImage = getImageUrl(user?.profile_image)
+  const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
+
+  // ✅ Trust the backend URL directly — only use it if it's a full http URL
+  const rawImage     = user?.profile_image || null
+  const profileImage = rawImage && String(rawImage).startsWith('http') ? rawImage : null
+  const showImage    = profileImage && !imgError
 
   return (
     <SafeAreaView style={s.safe}>
@@ -141,11 +139,11 @@ export default function Profile() {
 
         {/* Avatar */}
         <View style={s.avatarWrap}>
-          {profileImage ? (
+          {showImage ? (
             <Image
               source={{ uri: profileImage }}
               style={s.avatarImg}
-              onError={() => console.log('Image failed to load:', profileImage)}
+              onError={() => setImgError(true)}
             />
           ) : (
             <View style={s.avatar}>
@@ -220,7 +218,7 @@ export default function Profile() {
               <View style={ms.avatarRow}>
                 {imageUri ? (
                   <Image source={{ uri: imageUri }} style={ms.previewImg}/>
-                ) : profileImage ? (
+                ) : showImage ? (
                   <Image source={{ uri: profileImage }} style={ms.previewImg}/>
                 ) : (
                   <View style={ms.previewInitials}>
