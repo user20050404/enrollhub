@@ -7,12 +7,27 @@
     "scheme": "enrollhub",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "ios": { "supportsTablet": false },
+    "ios": {
+      "supportsTablet": false
+    },
     "android": {
-      "adaptiveIcon": { "backgroundColor": "#0D1117" },
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0D1117"
+      },
       "package": "com.enrollhub.app"
     },
-    "plugins": ["expo-router"],
-    "experiments": { "typedRoutes": true }
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "631261bf-20aa-42ea-9be6-2c10db4bf17f"
+      }
+    }
   }
 }
