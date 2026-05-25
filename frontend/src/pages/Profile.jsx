@@ -82,7 +82,7 @@ const getImageUrl = (image) => {
   if (url.startsWith('/')) return `https://enrollhub-backend.onrender.com${url}`
   return `https://res.cloudinary.com/dhcszgtm5/image/upload/${url}`
 }
-
+  console.log('profile_image value:', user?.profile_image)
   const profileImage = preview || getImageUrl(user?.profile_image)
   const initials     = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
 
