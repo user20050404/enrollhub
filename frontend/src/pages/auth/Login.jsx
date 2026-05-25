@@ -3,11 +3,12 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 export default function Login() {
-  const { login }            = useAuth()
-  const navigate             = useNavigate()
-  const [form, setForm]      = useState({ email: '', password: '' })
-  const [error, setError]    = useState('')
+  const { login }             = useAuth()
+  const navigate              = useNavigate()
+  const [form, setForm]       = useState({ email: '', password: '' })
+  const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPw, setShowPw]   = useState(false)
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -61,12 +62,23 @@ export default function Login() {
             </div>
             <div>
               <label className="text-gray-400 text-sm block mb-1.5">Password</label>
-              <input
-                type="password" name="password" value={form.password}
-                onChange={handleChange} required
-                placeholder="Password"
-                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500 transition-colors"
-              />
+              <div className="relative">
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  name="password" value={form.password}
+                  onChange={handleChange} required
+                  placeholder="Password"
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 pr-11 text-sm focus:outline-none focus:border-amber-500 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-amber-500 transition-colors text-lg select-none"
+                  tabIndex={-1}
+                >
+                  {showPw ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
             <button
               type="submit" disabled={loading}

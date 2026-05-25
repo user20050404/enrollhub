@@ -7,6 +7,8 @@ export default function Register() {
   const [error, setError]     = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPw, setShowPw]   = useState(false)
+  const [showPw2, setShowPw2] = useState(false)
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -72,13 +74,41 @@ export default function Register() {
               </div>
               <div>
                 <label className="text-gray-400 text-sm block mb-1.5">Password</label>
-                <input type="password" name="password" value={form.password} onChange={handleChange} required
-                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500"/>
+                <div className="relative">
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    name="password" value={form.password}
+                    onChange={handleChange} required
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 pr-11 text-sm focus:outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(p => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-amber-500 transition-colors text-lg select-none"
+                    tabIndex={-1}
+                  >
+                    {showPw ? '🙈' : '👁️'}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="text-gray-400 text-sm block mb-1.5">Confirm password</label>
-                <input type="password" name="password2" value={form.password2} onChange={handleChange} required
-                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500"/>
+                <div className="relative">
+                  <input
+                    type={showPw2 ? 'text' : 'password'}
+                    name="password2" value={form.password2}
+                    onChange={handleChange} required
+                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2.5 pr-11 text-sm focus:outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw2(p => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-amber-500 transition-colors text-lg select-none"
+                    tabIndex={-1}
+                  >
+                    {showPw2 ? '🙈' : '👁️'}
+                  </button>
+                </div>
               </div>
               <button type="submit" disabled={loading}
                 className="w-full bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-semibold rounded-lg py-2.5 text-sm transition-colors">
