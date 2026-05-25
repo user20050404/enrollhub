@@ -55,11 +55,19 @@ export default function Enrollment() {
     setShowAdd(true)
   }
 
-  const handleSelectSection = (sec) => {
+  // ─── FIXED: fetch full section detail so subjects_detail is populated ───
+  const handleSelectSection = async (sec) => {
     setSelSection(sec)
-    setPreview(sec)
+    setPreview(sec)              // show immediately so UI doesn't go blank
     setShowSectionPicker(false)
+    try {
+      const res = await api.get(`/sections/${sec.id}/`)
+      setPreview(res.data)       // overwrite with full detail that has subjects_detail
+    } catch {
+      // preview stays as list-level data — no crash, enrollment still works
+    }
   }
+  // ────────────────────────────────────────────────────────────────────────
 
   const handleEnroll = async () => {
     if (!selStudent || !selSection) { Alert.alert('Error', 'Please select a student and section.'); return }
