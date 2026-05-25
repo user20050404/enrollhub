@@ -74,7 +74,16 @@ export default function Profile() {
     } finally { setSavingPw(false) }
   }
 
-  const profileImage = preview || (user?.profile_image ? user.profile_image : null)
+// Helper — converts any image value to a displayable URL
+const getImageUrl = (image) => {
+  if (!image) return null
+  const url = String(image)
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/')) return `https://enrollhub-backend.onrender.com${url}`
+  return `https://res.cloudinary.com/dhcszgtm5/image/upload/${url}`
+}
+
+  const profileImage = preview || getImageUrl(user?.profile_image)
   const initials     = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
 
   return (

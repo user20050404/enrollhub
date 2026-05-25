@@ -44,6 +44,14 @@ export default function Profile() {
     setShowEditModal(true)
   }
 
+  const getImageUrl = (image) => {
+  if (!image) return null
+  const url = String(image)
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/')) return `https://enrollhub-backend.onrender.com${url}`
+  return `https://res.cloudinary.com/dhcszgtm5/image/upload/${url}`
+}
+
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
@@ -125,7 +133,7 @@ export default function Profile() {
   }
 
   const initials     = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
-  const profileImage = user?.profile_image || null
+  const profileImage = getImageUrl(user?.profile_image)
 
   return (
     <SafeAreaView style={s.safe}>
