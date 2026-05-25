@@ -21,7 +21,6 @@ export default function Profile() {
   const [lastName,      setLastName]      = useState(user?.last_name  || '')
   const [imageUri,      setImageUri]      = useState(null)
   const [savingProfile, setSavingProfile] = useState(false)
-  const [imgError,      setImgError]      = useState(false)
 
   const [oldPw,     setOldPw]     = useState('')
   const [newPw,     setNewPw]     = useState('')
@@ -41,7 +40,7 @@ export default function Profile() {
   const openEditModal = () => {
     setFirstName(user?.first_name || '')
     setLastName(user?.last_name   || '')
-    setImageUri(null)
+    // ✅ Don't reset imageUri — keep showing current image in modal
     setShowEditModal(true)
   }
 
@@ -59,7 +58,6 @@ export default function Profile() {
     })
     if (!result.canceled) {
       setImageUri(result.assets[0].uri)
-      setImgError(false)
     }
   }
 
@@ -81,16 +79,19 @@ export default function Profile() {
         formData.append('profile_image', { uri:imageUri, name:filename, type })
       }
 
-      await api.patch('/auth/me/update/', formData, {
+      // ✅ Use PATCH response directly — already has updated user data
+      const res = await api.patch('/auth/me/update/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      // Re-fetch fresh user data to get full Cloudinary URL from backend
-      const fresh = await api.get('/auth/me/')
-      setUser(fresh.data)
+      // ✅ Keep imageUri alive — store it in user state so it persists after modal closes
+      setUser({
+        ...res.data,
+        _localImage: imageUri || user?._localImage || null,
+      })
+
       setShowEditModal(false)
-      setImageUri(null)
-      setImgError(false)
+      // ✅ Do NOT clear imageUri — it stays so the avatar keeps showing
       Alert.alert('Success', 'Profile updated!')
 
     } catch (err) {
@@ -128,10 +129,11 @@ export default function Profile() {
 
   const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
 
-  // ✅ Trust the backend URL directly — only use it if it's a full http URL
-  const rawImage     = user?.profile_image || null
-  const profileImage = rawImage && String(rawImage).startsWith('http') ? rawImage : null
-  const showImage    = profileImage && !imgError
+  // ✅ Priority: local picked image → persisted local image → backend full URL → null
+  const backendImage = user?.profile_image && String(user.profile_image).startsWith('http')
+    ? user.profile_image
+    : null
+  const profileImage = imageUri || user?._localImage || backendImage || null
 
   return (
     <SafeAreaView style={s.safe}>
@@ -139,11 +141,11 @@ export default function Profile() {
 
         {/* Avatar */}
         <View style={s.avatarWrap}>
-          {showImage ? (
+          {profileImage ? (
             <Image
               source={{ uri: profileImage }}
               style={s.avatarImg}
-              onError={() => setImgError(true)}
+              onError={() => {}}
             />
           ) : (
             <View style={s.avatar}>
@@ -216,9 +218,7 @@ export default function Profile() {
 
               {/* Image picker */}
               <View style={ms.avatarRow}>
-                {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={ms.previewImg}/>
-                ) : showImage ? (
+                {profileImage ? (
                   <Image source={{ uri: profileImage }} style={ms.previewImg}/>
                 ) : (
                   <View style={ms.previewInitials}>

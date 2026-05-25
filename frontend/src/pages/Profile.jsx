@@ -21,14 +21,12 @@ export default function Profile() {
   const [error, setError]         = useState('')
   const [pwError, setPwError]     = useState('')
   const [pwSuccess, setPwSuccess] = useState('')
-  const [imgError, setImgError]   = useState(false)
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
     if (!file) return
     setImageFile(file)
     setPreview(URL.createObjectURL(file))
-    setImgError(false)
   }
 
   const handleProfileSave = async (e) => {
@@ -40,17 +38,22 @@ export default function Profile() {
       formData.append('last_name',  form.last_name)
       if (imageFile) formData.append('profile_image', imageFile)
 
-      await api.patch('/auth/me/update/', formData, {
+      // ✅ Use PATCH response directly — it already has the updated user data
+      // No need for a second GET call
+      const res = await api.patch('/auth/me/update/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      // Re-fetch fresh user data to get full Cloudinary URL from backend
-      const fresh = await api.get('/auth/me/')
-      setUser(fresh.data)
+      // ✅ Keep preview alive so image stays visible this session
+      // Merge backend response with local preview URL as the image source
+      setUser({
+        ...res.data,
+        _localImage: preview || null,
+      })
+
       setSuccess('Profile updated successfully!')
       setImageFile(null)
-      setPreview(null)
-      setImgError(false)
+      // ✅ Do NOT clear preview — keep showing the local image
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to update profile.')
     } finally { setSaving(false) }
@@ -75,11 +78,11 @@ export default function Profile() {
     } finally { setSavingPw(false) }
   }
 
-  // ✅ Trust the backend URL directly — it returns the full Cloudinary URL after the serializer fix
-  // Only use it if it's a real full URL starting with http
-  const rawImage     = preview || user?.profile_image || null
-  const profileImage = rawImage && String(rawImage).startsWith('http') ? rawImage : null
-  const showImage    = profileImage && !imgError
+  // ✅ Priority: local preview → backend full URL → null (show initials)
+  const backendImage = user?.profile_image && String(user.profile_image).startsWith('http')
+    ? user.profile_image
+    : null
+  const profileImage = preview || user?._localImage || backendImage || null
   const initials     = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`
 
   return (
@@ -99,18 +102,20 @@ export default function Profile() {
             {/* Avatar */}
             <div className="flex items-center gap-5 mb-6">
               <div className="relative">
-                {showImage ? (
+                {profileImage ? (
                   <img
                     src={profileImage}
                     alt="Profile"
                     className="w-20 h-20 rounded-xl object-cover border-2 border-gray-700"
-                    onError={() => setImgError(true)}
+                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
                   />
-                ) : (
-                  <div className="w-20 h-20 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold border-2 border-gray-700">
-                    {initials}
-                  </div>
-                )}
+                ) : null}
+                <div
+                  className="w-20 h-20 rounded-xl bg-indigo-600 items-center justify-center text-white text-2xl font-bold border-2 border-gray-700"
+                  style={{ display: profileImage ? 'none' : 'flex' }}
+                >
+                  {initials}
+                </div>
                 <button type="button" onClick={() => fileRef.current.click()}
                   className="absolute -bottom-2 -right-2 w-7 h-7 bg-amber-500 hover:bg-amber-400 rounded-full flex items-center justify-center text-black text-xs font-bold transition-colors">
                   ✎
