@@ -18,6 +18,7 @@ export default function MyEnrollment() {
   const [sections,   setSections]   = useState([])
   const [loading,    setLoading]    = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [loadError,  setLoadError]  = useState('')
   const [showModal,  setShowModal]  = useState(false)
   const [selSection, setSelSection] = useState(null)
   const [preview,    setPreview]    = useState(null)
@@ -25,21 +26,34 @@ export default function MyEnrollment() {
   const [showPicker, setShowPicker] = useState(false)
 
   const load = async () => {
+    setLoadError('')
     try {
-      const [meRes, secRes] = await Promise.allSettled([
+      const [meRes, secRes] = await Promise.all([
         api.get('/enrollments/me/'),
         api.get('/sections/'),
       ])
-      if (meRes.status === 'fulfilled')  setData(meRes.value.data)
-      if (secRes.status === 'fulfilled') setSections(secRes.value.data.results || secRes.value.data)
-    } finally { setLoading(false); setRefreshing(false) }
+      setData(meRes.data)
+      setSections(secRes.data.results || secRes.data || [])
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || 'Failed to load.'
+      setLoadError(msg)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }
   useEffect(() => { load() }, [])
 
-  const handleSelectSection = (sec) => {
+  const handleSelectSection = async (sec) => {
     setSelSection(sec)
     setPreview(sec)
     setShowPicker(false)
+    try {
+      const res = await api.get(`/sections/${sec.id}/`)
+      setPreview(res.data)
+    } catch {
+      // keep list-level data
+    }
   }
 
   const handleEnroll = async () => {
@@ -75,19 +89,31 @@ export default function MyEnrollment() {
     <SafeAreaView style={s.safe}>
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load() }} tintColor="#F59E0B"/>}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom:32 }}
       >
         <View style={s.header}>
           <View>
             <Text style={s.title}>My Enrollment</Text>
             <Text style={s.subtitle}>Current semester subjects</Text>
           </View>
-          <TouchableOpacity style={s.addBtn} onPress={() => { setShowModal(true); setSelSection(null); setPreview(null) }}>
+          <TouchableOpacity
+            style={s.addBtn}
+            onPress={() => { setShowModal(true); setSelSection(null); setPreview(null) }}
+          >
             <Text style={s.addBtnText}>+ Enroll</Text>
           </TouchableOpacity>
         </View>
 
-        {loading ? <ActivityIndicator color="#F59E0B" style={{ marginTop:60 }}/> : (
+        {loadError ? (
+          <View style={s.errorBox}>
+            <Text style={s.errorText}>⚠ {loadError}</Text>
+            <TouchableOpacity onPress={load} style={s.retryBtn}>
+              <Text style={s.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : loading ? (
+          <ActivityIndicator color="#F59E0B" style={{ marginTop:60 }}/>
+        ) : (
           <View style={{ paddingHorizontal:16 }}>
             {student && (
               <>
@@ -143,8 +169,9 @@ export default function MyEnrollment() {
                         <View style={{ flex:1 }}>
                           <Text style={s.subjectCode}>{e.subject_detail?.code}</Text>
                           <Text style={s.subjectName}>{e.subject_detail?.name}</Text>
-                          {e.subject_detail?.schedule ? <Text style={s.subjectMeta}>🕐 {e.subject_detail.schedule}</Text> : null}
-                          {e.subject_detail?.room     ? <Text style={s.subjectMeta}>📍 {e.subject_detail.room}</Text>     : null}
+                          {e.subject_detail?.instructor ? <Text style={s.subjectMeta}>👤 {e.subject_detail.instructor}</Text> : null}
+                          {e.subject_detail?.schedule   ? <Text style={s.subjectMeta}>🕐 {e.subject_detail.schedule}</Text>   : null}
+                          {e.subject_detail?.room       ? <Text style={s.subjectMeta}>📍 {e.subject_detail.room}</Text>       : null}
                         </View>
                         <View style={{ alignItems:'flex-end', gap:4 }}>
                           <Text style={s.subjectUnits}>{e.subject_detail?.units}u</Text>
@@ -176,7 +203,9 @@ export default function MyEnrollment() {
               <Text style={ms.label}>Select Section</Text>
               <TouchableOpacity style={ms.picker} onPress={() => setShowPicker(true)}>
                 <Text style={selSection ? ms.pickerValue : ms.pickerPlaceholder}>
-                  {selSection ? `${selSection.code} (${selSection.available_slots} slots left)` : 'Choose a section…'}
+                  {selSection
+                    ? `${selSection.code} (${selSection.available_slots} slots left)`
+                    : 'Choose a section…'}
                 </Text>
                 <Text style={ms.pickerArrow}>›</Text>
               </TouchableOpacity>
@@ -191,7 +220,8 @@ export default function MyEnrollment() {
                     <View key={sub.id} style={ms.previewRow}>
                       <View style={{ flex:1 }}>
                         <Text style={ms.previewCode}>{sub.code} — {sub.name}</Text>
-                        {sub.schedule ? <Text style={ms.previewMeta}>🕐 {sub.schedule}{sub.room ? ` · 📍 ${sub.room}` : ''}</Text> : null}
+                        {sub.instructor ? <Text style={ms.previewMeta}>👤 {sub.instructor}</Text> : null}
+                        {sub.schedule   ? <Text style={ms.previewMeta}>🕐 {sub.schedule}{sub.room ? ` · 📍 ${sub.room}` : ''}</Text> : null}
                       </View>
                       <Text style={ms.previewU}>{sub.units}u</Text>
                     </View>
@@ -205,7 +235,9 @@ export default function MyEnrollment() {
                 disabled={enrolling || !selSection || !preview?.subjects_detail?.length}
               >
                 <Text style={ms.saveBtnText}>
-                  {enrolling ? 'Enrolling...' : `Enroll in ${preview?.subjects_detail?.length || 0} Subject(s)`}
+                  {enrolling
+                    ? 'Enrolling...'
+                    : `Enroll in ${preview?.subjects_detail?.length || 0} Subject(s)`}
                 </Text>
               </TouchableOpacity>
             </ScrollView>
@@ -218,23 +250,26 @@ export default function MyEnrollment() {
         <View style={ms.overlay}>
           <View style={ms.pickerSheet}>
             <View style={ms.sheetHeader}>
-              <Text style={ms.sheetTitle}>Choose Section</Text>
+              <Text style={ms.sheetTitle}>Choose Section ({availableSections.length} available)</Text>
               <TouchableOpacity onPress={() => setShowPicker(false)}>
                 <Text style={ms.closeBtn}>✕</Text>
               </TouchableOpacity>
             </View>
-
-            {/* DEBUG LINE — remove after fixing */}
-            <Text style={{ color:'red', fontSize:11, marginBottom:8 }}>
-              sections: {sections.length} | available: {availableSections.length} | enrolledIDs: {JSON.stringify(enrolledSectionIds)}
-            </Text>
-
             {availableSections.length === 0 ? (
-              <Text style={ms.noSectMsg}>No available sections right now</Text>
+              <View style={{ alignItems:'center', padding:20 }}>
+                <Text style={ms.noSectMsg}>No available sections right now</Text>
+                <TouchableOpacity onPress={() => { setShowPicker(false); load() }} style={ms.retryBtn}>
+                  <Text style={ms.retryText}>Reload</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ flex:1 }}>
                 {availableSections.map(sec => (
-                  <TouchableOpacity key={sec.id} style={ms.listItem} onPress={() => handleSelectSection(sec)}>
+                  <TouchableOpacity
+                    key={sec.id}
+                    style={ms.listItem}
+                    onPress={() => handleSelectSection(sec)}
+                  >
                     <Text style={ms.listItemMain}>{sec.code}</Text>
                     <Text style={ms.listItemSub}>
                       {sec.available_slots} slots · {sec.subjects_detail?.map(s => s.code).join(', ')}
@@ -257,6 +292,10 @@ const s = StyleSheet.create({
   subtitle:      { fontSize:11, color:'#6B7280', marginTop:2 },
   addBtn:        { backgroundColor:'#F59E0B', paddingHorizontal:14, paddingVertical:7, borderRadius:8 },
   addBtnText:    { color:'#000', fontWeight:'700', fontSize:13 },
+  errorBox:      { margin:16, backgroundColor:'rgba(244,63,94,0.1)', borderRadius:12, padding:16, alignItems:'center' },
+  errorText:     { color:'#FB7185', fontSize:13, marginBottom:10, textAlign:'center' },
+  retryBtn:      { backgroundColor:'#F59E0B', paddingHorizontal:20, paddingVertical:8, borderRadius:8 },
+  retryText:     { color:'#000', fontWeight:'700', fontSize:13 },
   statsGrid:     { flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:12 },
   statCard:      { flex:1, minWidth:'45%', backgroundColor:'#111827', borderWidth:1, borderColor:'#1F2937', borderRadius:12, padding:12 },
   statValue:     { color:'#F59E0B', fontWeight:'bold', fontSize:15, marginBottom:2 },
@@ -286,7 +325,7 @@ const s = StyleSheet.create({
 const ms = StyleSheet.create({
   overlay:           { flex:1, backgroundColor:'rgba(0,0,0,0.7)', justifyContent:'flex-end' },
   sheet:             { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, maxHeight:'90%' },
-  pickerSheet:       { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, maxHeight:'80%', minHeight:200 },
+  pickerSheet:       { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, maxHeight:'80%', flex:0 },
   sheetHeader:       { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:20 },
   sheetTitle:        { color:'#FFF', fontSize:18, fontWeight:'bold' },
   closeBtn:          { color:'#6B7280', fontSize:20 },
@@ -307,6 +346,8 @@ const ms = StyleSheet.create({
   listItemMain:      { color:'#FFF', fontSize:14, fontWeight:'500', marginBottom:2 },
   listItemSub:       { color:'#6B7280', fontSize:11 },
   noSectMsg:         { color:'#4B5563', padding:16, textAlign:'center', fontSize:13 },
+  retryBtn:          { backgroundColor:'#F59E0B', paddingHorizontal:20, paddingVertical:8, borderRadius:8, marginTop:8 },
+  retryText:         { color:'#000', fontWeight:'700', fontSize:13 },
   saveBtn:           { backgroundColor:'#F59E0B', borderRadius:12, paddingVertical:14, alignItems:'center', marginBottom:16 },
   saveBtnDisabled:   { opacity:0.5 },
   saveBtnText:       { color:'#000', fontWeight:'700', fontSize:15 },

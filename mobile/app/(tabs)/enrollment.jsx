@@ -21,6 +21,7 @@ export default function Enrollment() {
   const [sections,    setSections]    = useState([])
   const [loading,     setLoading]     = useState(true)
   const [refreshing,  setRefreshing]  = useState(false)
+  const [loadError,   setLoadError]   = useState('')
 
   const [showAdd,    setShowAdd]    = useState(false)
   const [selStudent, setSelStudent] = useState(null)
@@ -37,43 +38,56 @@ export default function Enrollment() {
   const [showSectionPicker, setShowSectionPicker] = useState(false)
 
   const load = async () => {
+    setLoadError('')
     try {
-      const [eRes, stRes, secRes] = await Promise.allSettled([
+      const [eRes, stRes, secRes] = await Promise.all([
         api.get('/enrollments/'),
         api.get('/students/'),
         api.get('/sections/'),
       ])
-      if (eRes.status === 'fulfilled')   setEnrollments(eRes.value.data.results  || eRes.value.data)
-      if (stRes.status === 'fulfilled')  setStudents(stRes.value.data.results    || stRes.value.data)
-      if (secRes.status === 'fulfilled') setSections(secRes.value.data.results   || secRes.value.data)
-    } finally { setLoading(false); setRefreshing(false) }
+      setEnrollments(eRes.data.results  || eRes.data  || [])
+      setStudents(stRes.data.results    || stRes.data  || [])
+      setSections(secRes.data.results   || secRes.data || [])
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || 'Failed to load data.'
+      setLoadError(msg)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }
   useEffect(() => { load() }, [])
 
   const openAdd = () => {
-    setSelStudent(null); setSelSection(null); setPreview(null)
+    setSelStudent(null)
+    setSelSection(null)
+    setPreview(null)
     setShowAdd(true)
   }
 
-  // ─── FIXED: fetch full section detail so subjects_detail is populated ───
   const handleSelectSection = async (sec) => {
     setSelSection(sec)
-    setPreview(sec)              // show immediately so UI doesn't go blank
+    setPreview(sec)
     setShowSectionPicker(false)
     try {
       const res = await api.get(`/sections/${sec.id}/`)
-      setPreview(res.data)       // overwrite with full detail that has subjects_detail
+      setPreview(res.data)
     } catch {
-      // preview stays as list-level data — no crash, enrollment still works
+      // keep list-level data as preview
     }
   }
-  // ────────────────────────────────────────────────────────────────────────
 
   const handleEnroll = async () => {
-    if (!selStudent || !selSection) { Alert.alert('Error', 'Please select a student and section.'); return }
+    if (!selStudent || !selSection) {
+      Alert.alert('Error', 'Please select a student and section.')
+      return
+    }
     setEnrolling(true)
     try {
-      await api.post('/enrollments/create/', { student: selStudent.id, section: selSection.id })
+      await api.post('/enrollments/create/', {
+        student: selStudent.id,
+        section: selSection.id,
+      })
       setShowAdd(false)
       load()
       Alert.alert('Success', `Enrolled ${selStudent.full_name} in ${selSection.code}!`)
@@ -121,7 +135,16 @@ export default function Enrollment() {
         </TouchableOpacity>
       </View>
 
-      {loading ? <ActivityIndicator color="#F59E0B" style={{ marginTop:40 }}/> : (
+      {loadError ? (
+        <View style={s.errorBox}>
+          <Text style={s.errorText}>⚠ {loadError}</Text>
+          <TouchableOpacity onPress={load} style={s.retryBtn}>
+            <Text style={s.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : loading ? (
+        <ActivityIndicator color="#F59E0B" style={{ marginTop:40 }}/>
+      ) : (
         <FlatList
           data={enrollments}
           keyExtractor={i => String(i.id)}
@@ -171,6 +194,7 @@ export default function Enrollment() {
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
               <Text style={ms.label}>Student</Text>
               <TouchableOpacity style={ms.picker} onPress={() => setShowStudentPicker(true)}>
                 <Text style={selStudent ? ms.pickerValue : ms.pickerPlaceholder}>
@@ -182,7 +206,9 @@ export default function Enrollment() {
               <Text style={ms.label}>Section</Text>
               <TouchableOpacity style={ms.picker} onPress={() => setShowSectionPicker(true)}>
                 <Text style={selSection ? ms.pickerValue : ms.pickerPlaceholder}>
-                  {selSection ? `${selSection.code} (${selSection.available_slots} slots left)` : 'Select section…'}
+                  {selSection
+                    ? `${selSection.code} (${selSection.available_slots} slots left)`
+                    : 'Select section…'}
                 </Text>
                 <Text style={ms.pickerArrow}>›</Text>
               </TouchableOpacity>
@@ -209,7 +235,9 @@ export default function Enrollment() {
                 disabled={enrolling || !selStudent || !selSection}
               >
                 <Text style={ms.saveBtnText}>
-                  {enrolling ? 'Enrolling...' : `Enroll in ${preview?.subjects_detail?.length || 0} Subject(s)`}
+                  {enrolling
+                    ? 'Enrolling...'
+                    : `Enroll in ${preview?.subjects_detail?.length || 0} Subject(s)`}
                 </Text>
               </TouchableOpacity>
             </ScrollView>
@@ -222,23 +250,26 @@ export default function Enrollment() {
         <View style={ms.overlay}>
           <View style={ms.pickerSheet}>
             <View style={ms.sheetHeader}>
-              <Text style={ms.sheetTitle}>Select Student</Text>
+              <Text style={ms.sheetTitle}>Select Student ({students.length})</Text>
               <TouchableOpacity onPress={() => setShowStudentPicker(false)}>
                 <Text style={ms.closeBtn}>✕</Text>
               </TouchableOpacity>
             </View>
-
-            {/* DEBUG LINE — remove after fixing */}
-            <Text style={{ color:'red', fontSize:11, marginBottom:8 }}>
-              students: {students.length}
-            </Text>
-
             {students.length === 0 ? (
-              <Text style={ms.noSubMsg}>No students found</Text>
+              <View style={{ alignItems:'center', padding:20 }}>
+                <Text style={ms.noSubMsg}>No students found</Text>
+                <TouchableOpacity onPress={() => { setShowStudentPicker(false); load() }} style={ms.retryBtn}>
+                  <Text style={ms.retryText}>Reload</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ flex:1 }}>
                 {students.map(st => (
-                  <TouchableOpacity key={st.id} style={ms.listItem} onPress={() => { setSelStudent(st); setShowStudentPicker(false) }}>
+                  <TouchableOpacity
+                    key={st.id}
+                    style={ms.listItem}
+                    onPress={() => { setSelStudent(st); setShowStudentPicker(false) }}
+                  >
                     <Text style={ms.listItemMain}>{st.full_name}</Text>
                     <Text style={ms.listItemSub}>{st.student_id} · {st.course}</Text>
                   </TouchableOpacity>
@@ -254,25 +285,30 @@ export default function Enrollment() {
         <View style={ms.overlay}>
           <View style={ms.pickerSheet}>
             <View style={ms.sheetHeader}>
-              <Text style={ms.sheetTitle}>Select Section</Text>
+              <Text style={ms.sheetTitle}>Select Section ({availableSections.length} open)</Text>
               <TouchableOpacity onPress={() => setShowSectionPicker(false)}>
                 <Text style={ms.closeBtn}>✕</Text>
               </TouchableOpacity>
             </View>
-
-            {/* DEBUG LINE — remove after fixing */}
-            <Text style={{ color:'red', fontSize:11, marginBottom:8 }}>
-              sections: {sections.length} | available: {availableSections.length}
-            </Text>
-
             {availableSections.length === 0 ? (
-              <Text style={ms.noSubMsg}>No open sections available</Text>
+              <View style={{ alignItems:'center', padding:20 }}>
+                <Text style={ms.noSubMsg}>No open sections available</Text>
+                <TouchableOpacity onPress={() => { setShowSectionPicker(false); load() }} style={ms.retryBtn}>
+                  <Text style={ms.retryText}>Reload</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ flex:1 }}>
                 {availableSections.map(sec => (
-                  <TouchableOpacity key={sec.id} style={ms.listItem} onPress={() => handleSelectSection(sec)}>
+                  <TouchableOpacity
+                    key={sec.id}
+                    style={ms.listItem}
+                    onPress={() => handleSelectSection(sec)}
+                  >
                     <Text style={ms.listItemMain}>{sec.code}</Text>
-                    <Text style={ms.listItemSub}>{sec.available_slots} slots · {sec.subjects_detail?.map(s => s.code).join(', ')}</Text>
+                    <Text style={ms.listItemSub}>
+                      {sec.available_slots} slots · {sec.subjects_detail?.map(s => s.code).join(', ')}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -284,7 +320,7 @@ export default function Enrollment() {
       {/* Edit Status Modal */}
       <Modal visible={showEdit} animationType="slide" transparent onRequestClose={() => setShowEdit(false)}>
         <View style={ms.overlay}>
-          <View style={[ms.sheet, { maxHeight:'50%' }]}>
+          <View style={[ms.sheet, { maxHeight:'55%' }]}>
             <View style={ms.sheetHeader}>
               <Text style={ms.sheetTitle}>Edit Status</Text>
               <TouchableOpacity onPress={() => setShowEdit(false)}>
@@ -298,18 +334,24 @@ export default function Enrollment() {
               {STATUSES.map(st => {
                 const ss = STATUS_STYLE[st]
                 return (
-                  <TouchableOpacity key={st} onPress={() => setEditStatus(st)}
-                    style={[ms.statusOption, editStatus === st && { backgroundColor: ss.bg, borderColor: ss.text }]}>
-                    <Text style={[ms.statusOptionText, editStatus === st && { color: ss.text }]}>
+                  <TouchableOpacity
+                    key={st}
+                    onPress={() => setEditStatus(st)}
+                    style={[ms.statusOption, editStatus === st && { backgroundColor:ss.bg, borderColor:ss.text }]}
+                  >
+                    <Text style={[ms.statusOptionText, editStatus === st && { color:ss.text }]}>
                       {st.charAt(0).toUpperCase() + st.slice(1)}
                     </Text>
-                    {editStatus === st && <Text style={[ms.checkmark, { color: ss.text }]}>✓</Text>}
+                    {editStatus === st && <Text style={[ms.checkmark, { color:ss.text }]}>✓</Text>}
                   </TouchableOpacity>
                 )
               })}
             </View>
-            <TouchableOpacity style={[ms.saveBtn, { marginTop:16 }, saving && ms.saveBtnDisabled]}
-              onPress={handleSaveEdit} disabled={saving}>
+            <TouchableOpacity
+              style={[ms.saveBtn, { marginTop:16 }, saving && ms.saveBtnDisabled]}
+              onPress={handleSaveEdit}
+              disabled={saving}
+            >
               <Text style={ms.saveBtnText}>{saving ? 'Saving...' : 'Save Status'}</Text>
             </TouchableOpacity>
           </View>
@@ -326,6 +368,10 @@ const s = StyleSheet.create({
   addBtn:      { backgroundColor:'#F59E0B', paddingHorizontal:14, paddingVertical:7, borderRadius:8 },
   addBtnText:  { color:'#000', fontWeight:'700', fontSize:13 },
   empty:       { color:'#4B5563', textAlign:'center', marginTop:40, fontSize:13 },
+  errorBox:    { margin:16, backgroundColor:'rgba(244,63,94,0.1)', borderRadius:12, padding:16, alignItems:'center' },
+  errorText:   { color:'#FB7185', fontSize:13, marginBottom:10, textAlign:'center' },
+  retryBtn:    { backgroundColor:'#F59E0B', paddingHorizontal:20, paddingVertical:8, borderRadius:8 },
+  retryText:   { color:'#000', fontWeight:'700', fontSize:13 },
   card:        { backgroundColor:'#111827', borderWidth:1, borderColor:'#1F2937', borderRadius:14, padding:14, marginBottom:10 },
   cardTop:     { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:4 },
   studentName: { color:'#FFF', fontWeight:'600', fontSize:14, flex:1 },
@@ -346,7 +392,7 @@ const s = StyleSheet.create({
 const ms = StyleSheet.create({
   overlay:           { flex:1, backgroundColor:'rgba(0,0,0,0.7)', justifyContent:'flex-end' },
   sheet:             { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, maxHeight:'90%' },
-  pickerSheet:       { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, maxHeight:'80%', minHeight:200 },
+  pickerSheet:       { backgroundColor:'#111827', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, maxHeight:'80%', flex:0 },
   sheetHeader:       { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:20 },
   sheetTitle:        { color:'#FFF', fontSize:18, fontWeight:'bold' },
   closeBtn:          { color:'#6B7280', fontSize:20 },
@@ -367,6 +413,8 @@ const ms = StyleSheet.create({
   listItemMain:      { color:'#FFF', fontSize:14, fontWeight:'500', marginBottom:2 },
   listItemSub:       { color:'#6B7280', fontSize:11 },
   noSubMsg:          { color:'#4B5563', padding:16, textAlign:'center', fontSize:13 },
+  retryBtn:          { backgroundColor:'#F59E0B', paddingHorizontal:20, paddingVertical:8, borderRadius:8, marginTop:8 },
+  retryText:         { color:'#000', fontWeight:'700', fontSize:13 },
   statusOption:      { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:14, borderRadius:10, borderWidth:1, borderColor:'#374151', backgroundColor:'#1F2937' },
   statusOptionText:  { color:'#9CA3AF', fontSize:14, fontWeight:'500', textTransform:'capitalize' },
   checkmark:         { fontSize:16, fontWeight:'bold' },

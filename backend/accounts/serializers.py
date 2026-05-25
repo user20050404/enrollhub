@@ -35,15 +35,10 @@ class UserSerializer(serializers.ModelSerializer):
     def get_profile_image(self, obj):
         if not obj.profile_image:
             return None
-        # If it's already a full URL (Cloudinary), return as-is
-        url = str(obj.profile_image)
-        if url.startswith('http'):
-            return url
-        # Otherwise build absolute URL using request context
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(obj.profile_image.url)
-        return url
+        try:
+            return obj.profile_image.url 
+        except Exception:
+            return None
 
 
 class ChangePasswordSerializer(serializers.Serializer):
